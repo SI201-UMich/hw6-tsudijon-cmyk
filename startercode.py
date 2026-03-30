@@ -204,6 +204,51 @@ def recommend_breeds_in_same_group(breed_name, cache_file):
             "No group information available for '{breed_name}'."  (no group id)
             "No recommendations found based on '{breed_name}'."  (no other breeds in that group)
     """
+    cache = load_json(cache_file)
+ 
+    if not cache:
+        return "No breed data found in cache."
+ 
+    # Find the target breed and its group id
+    target_group_id = None
+    found = False
+ 
+    for url, entry in cache.items():
+        try:
+            name = entry["data"]["attributes"]["name"]
+            if name.lower() == breed_name.lower():
+                found = True
+                try:
+                    target_group_id = entry["data"]["relationships"]["group"]["data"]["id"]
+                except (KeyError, TypeError):
+                    target_group_id = None
+                break
+        except (KeyError, TypeError):
+            continue
+ 
+    if not found:
+        return f"'{breed_name}' is not in the cache."
+ 
+    if target_group_id is None:
+        return f"No group information available for '{breed_name}'."
+ 
+    # Find other breeds in the same group
+    recommendations = []
+    for url, entry in cache.items():
+        try:
+            name = entry["data"]["attributes"]["name"]
+            if name.lower() == breed_name.lower():
+                continue
+            group_id = entry["data"]["relationships"]["group"]["data"]["id"]
+            if group_id == target_group_id:
+                recommendations.append(name)
+        except (KeyError, TypeError):
+            continue
+ 
+    if not recommendations:
+        return f"No recommendations found based on '{breed_name}'."
+ 
+    return sorted(recommendations)
 
 
 class TestHomeworkDogAPI(unittest.TestCase):
